@@ -57,13 +57,13 @@ pub trait CandidateHelpers {
 impl CandidateHelpers for PostCandidate {
     fn get_screen_names(&self) -> HashMap<u64, String> {
         let mut screen_names = HashMap::<u64, String>::new();
-        if let Some(author_screen_name) = self.author_screen_name.clone() {
-            screen_names.insert(self.author_id, author_screen_name);
+        if let Some(author_screen_name) = &self.author_screen_name {
+            screen_names.insert(self.author_id, author_screen_name.clone());
         }
         if let (Some(retweeted_screen_name), Some(retweeted_user_id)) =
-            (self.retweeted_screen_name.clone(), self.retweeted_user_id)
+            (&self.retweeted_screen_name, self.retweeted_user_id)
         {
-            screen_names.insert(retweeted_user_id, retweeted_screen_name);
+            screen_names.insert(retweeted_user_id, retweeted_screen_name.clone());
         }
         screen_names
     }
