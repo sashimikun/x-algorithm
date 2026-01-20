@@ -11,7 +11,7 @@ impl Filter<ScoredPostsQuery, PostCandidate> for CoreDataHydrationFilter {
         &self,
         _query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
-    ) -> Result<FilterResult<PostCandidate>, String> {
+    ) -> Result<FilterResult<PostCandidate>, (String, Vec<PostCandidate>)> {
         let (kept, removed) = candidates
             .into_iter()
             .partition(|c| c.author_id != 0 && !c.tweet_text.trim().is_empty());

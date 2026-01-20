@@ -23,7 +23,8 @@ where
     /// Filter candidates by evaluating each against some criteria.
     /// Returns a FilterResult containing kept candidates (which continue to the next stage)
     /// and removed candidates (which are excluded from further processing).
-    async fn filter(&self, query: &Q, candidates: Vec<C>) -> Result<FilterResult<C>, String>;
+    /// On error, returns a tuple of the error message and the original candidates for recovery.
+    async fn filter(&self, query: &Q, candidates: Vec<C>) -> Result<FilterResult<C>, (String, Vec<C>)>;
 
     /// Returns a stable name for logging/metrics.
     fn name(&self) -> &'static str {

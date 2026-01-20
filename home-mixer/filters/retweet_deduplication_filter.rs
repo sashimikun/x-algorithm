@@ -14,7 +14,7 @@ impl Filter<ScoredPostsQuery, PostCandidate> for RetweetDeduplicationFilter {
         &self,
         _query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
-    ) -> Result<FilterResult<PostCandidate>, String> {
+    ) -> Result<FilterResult<PostCandidate>, (String, Vec<PostCandidate>)> {
         let mut seen_tweet_ids: HashSet<u64> = HashSet::new();
         let mut kept = Vec::new();
         let mut removed = Vec::new();

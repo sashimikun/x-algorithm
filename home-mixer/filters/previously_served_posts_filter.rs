@@ -16,7 +16,7 @@ impl Filter<ScoredPostsQuery, PostCandidate> for PreviouslyServedPostsFilter {
         &self,
         query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
-    ) -> Result<FilterResult<PostCandidate>, String> {
+    ) -> Result<FilterResult<PostCandidate>, (String, Vec<PostCandidate>)> {
         let (removed, kept): (Vec<_>, Vec<_>) = candidates.into_iter().partition(|c| {
             get_related_post_ids(c)
                 .iter()

@@ -13,7 +13,7 @@ impl Filter<ScoredPostsQuery, PostCandidate> for DedupConversationFilter {
         &self,
         _query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
-    ) -> Result<FilterResult<PostCandidate>, String> {
+    ) -> Result<FilterResult<PostCandidate>, (String, Vec<PostCandidate>)> {
         let mut kept: Vec<PostCandidate> = Vec::new();
         let mut removed: Vec<PostCandidate> = Vec::new();
         let mut best_per_convo: HashMap<u64, (usize, f64)> = HashMap::new();
