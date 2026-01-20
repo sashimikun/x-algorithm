@@ -13,8 +13,8 @@ impl Filter<ScoredPostsQuery, PostCandidate> for AuthorSocialgraphFilter {
         query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
     ) -> Result<FilterResult<PostCandidate>, String> {
-        let viewer_blocked_user_ids = query.user_features.blocked_user_ids.clone();
-        let viewer_muted_user_ids = query.user_features.muted_user_ids.clone();
+        let viewer_blocked_user_ids = &query.user_features.blocked_user_ids;
+        let viewer_muted_user_ids = &query.user_features.muted_user_ids;
 
         if viewer_blocked_user_ids.is_empty() && viewer_muted_user_ids.is_empty() {
             return Ok(FilterResult {
