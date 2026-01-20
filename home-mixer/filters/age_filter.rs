@@ -28,7 +28,7 @@ impl Filter<ScoredPostsQuery, PostCandidate> for AgeFilter {
         &self,
         _query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
-    ) -> Result<FilterResult<PostCandidate>, String> {
+    ) -> Result<FilterResult<PostCandidate>, (String, Vec<PostCandidate>)> {
         let (kept, removed): (Vec<_>, Vec<_>) = candidates
             .into_iter()
             .partition(|c| self.is_within_age(c.tweet_id));

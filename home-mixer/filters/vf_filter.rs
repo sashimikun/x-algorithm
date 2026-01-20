@@ -13,7 +13,7 @@ impl Filter<ScoredPostsQuery, PostCandidate> for VFFilter {
         &self,
         _query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
-    ) -> Result<FilterResult<PostCandidate>, String> {
+    ) -> Result<FilterResult<PostCandidate>, (String, Vec<PostCandidate>)> {
         let (removed, kept): (Vec<_>, Vec<_>) = candidates
             .into_iter()
             .partition(|c| should_drop(&c.visibility_reason));

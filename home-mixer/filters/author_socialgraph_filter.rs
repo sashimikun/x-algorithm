@@ -12,7 +12,7 @@ impl Filter<ScoredPostsQuery, PostCandidate> for AuthorSocialgraphFilter {
         &self,
         query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
-    ) -> Result<FilterResult<PostCandidate>, String> {
+    ) -> Result<FilterResult<PostCandidate>, (String, Vec<PostCandidate>)> {
         let viewer_blocked_user_ids = query.user_features.blocked_user_ids.clone();
         let viewer_muted_user_ids = query.user_features.muted_user_ids.clone();
 

@@ -12,7 +12,7 @@ impl Filter<ScoredPostsQuery, PostCandidate> for SelfTweetFilter {
         &self,
         query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
-    ) -> Result<FilterResult<PostCandidate>, String> {
+    ) -> Result<FilterResult<PostCandidate>, (String, Vec<PostCandidate>)> {
         let viewer_id = query.user_id as u64;
         let (kept, removed): (Vec<_>, Vec<_>) = candidates
             .into_iter()

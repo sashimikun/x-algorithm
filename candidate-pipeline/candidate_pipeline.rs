@@ -244,13 +244,12 @@ where
         let request_id = query.request_id().to_string();
         let mut all_removed = Vec::new();
         for filter in filters.iter().filter(|f| f.enable(query)) {
-            let backup = candidates.clone();
             match filter.filter(query, candidates).await {
                 Ok(result) => {
                     candidates = result.kept;
                     all_removed.extend(result.removed);
                 }
-                Err(err) => {
+                Err((err, original_candidates)) => {
                     error!(
                         "request_id={} stage={:?} component={} failed: {}",
                         request_id,
@@ -258,7 +257,7 @@ where
                         filter.name(),
                         err
                     );
-                    candidates = backup;
+                    candidates = original_candidates;
                 }
             }
         }

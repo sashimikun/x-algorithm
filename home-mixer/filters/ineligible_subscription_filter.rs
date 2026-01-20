@@ -13,7 +13,7 @@ impl Filter<ScoredPostsQuery, PostCandidate> for IneligibleSubscriptionFilter {
         &self,
         query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
-    ) -> Result<FilterResult<PostCandidate>, String> {
+    ) -> Result<FilterResult<PostCandidate>, (String, Vec<PostCandidate>)> {
         let subscribed_user_ids: HashSet<u64> = query
             .user_features
             .subscribed_user_ids

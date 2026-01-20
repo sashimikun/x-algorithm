@@ -15,7 +15,7 @@ impl Filter<ScoredPostsQuery, PostCandidate> for PreviouslySeenPostsFilter {
         &self,
         query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
-    ) -> Result<FilterResult<PostCandidate>, String> {
+    ) -> Result<FilterResult<PostCandidate>, (String, Vec<PostCandidate>)> {
         let bloom_filters = query
             .bloom_filter_entries
             .iter()
