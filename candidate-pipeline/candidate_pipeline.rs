@@ -326,3 +326,77 @@ where
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::filter::FilterResult;
+
+    #[derive(Clone, Debug)]
+    struct TestQuery;
+    impl HasRequestId for TestQuery {
+        fn request_id(&self) -> &str {
+            "test_req"
+        }
+    }
+
+    #[derive(Clone, Debug, PartialEq)]
+    struct TestCandidate(i32);
+
+    struct FailingFilter;
+    #[async_trait]
+    impl Filter<TestQuery, TestCandidate> for FailingFilter {
+        async fn filter(
+            &self,
+            _query: &TestQuery,
+            candidates: Vec<TestCandidate>,
+        ) -> Result<FilterResult<TestCandidate>, (String, Vec<TestCandidate>)> {
+            // Simulate failure and return ownership
+            Err(("Failure simulated".to_string(), candidates))
+        }
+    }
+
+    struct TestPipeline {
+        filters: Vec<Box<dyn Filter<TestQuery, TestCandidate>>>,
+        // other fields empty/mocked
+    }
+
+    // Implement minimal mocks for other traits
+    struct MockSelector;
+    impl Selector<TestQuery, TestCandidate> for MockSelector {
+        fn select(&self, _q: &TestQuery, c: Vec<TestCandidate>) -> Vec<TestCandidate> { c }
+    }
+
+    #[async_trait]
+    impl CandidatePipeline<TestQuery, TestCandidate> for TestPipeline {
+        fn query_hydrators(&self) -> &[Box<dyn QueryHydrator<TestQuery>>] { &[] }
+        fn sources(&self) -> &[Box<dyn Source<TestQuery, TestCandidate>>] { &[] }
+        fn hydrators(&self) -> &[Box<dyn Hydrator<TestQuery, TestCandidate>>] { &[] }
+        fn filters(&self) -> &[Box<dyn Filter<TestQuery, TestCandidate>>] { &self.filters }
+        fn scorers(&self) -> &[Box<dyn Scorer<TestQuery, TestCandidate>>] { &[] }
+        fn selector(&self) -> &dyn Selector<TestQuery, TestCandidate> { &MockSelector }
+        fn post_selection_hydrators(&self) -> &[Box<dyn Hydrator<TestQuery, TestCandidate>>] { &[] }
+        fn post_selection_filters(&self) -> &[Box<dyn Filter<TestQuery, TestCandidate>>] { &[] }
+        fn side_effects(&self) -> Arc<Vec<Box<dyn SideEffect<TestQuery, TestCandidate>>>> { Arc::new(vec![]) }
+        fn result_size(&self) -> usize { 10 }
+    }
+
+    #[tokio::test]
+    async fn test_filter_error_recovery() {
+        let pipeline = TestPipeline {
+            filters: vec![Box::new(FailingFilter)],
+        };
+        let query = TestQuery;
+        let candidates = vec![TestCandidate(1), TestCandidate(2)];
+
+        // Run filters directly to test the logic
+        let (kept, _) = pipeline.run_filters(&query, candidates.clone(), pipeline.filters(), PipelineStage::Filter).await;
+
+        // Verify that despite the error, candidates were restored and returned (as if filtered, but here we just want to ensure we didn't crash and got data back)
+        // In the implementation, if error occurs, candidates = original_candidates.
+        // And then loop continues. Since there are no more filters, these candidates are returned.
+        assert_eq!(kept.len(), 2);
+        assert_eq!(kept[0], TestCandidate(1));
+        assert_eq!(kept[1], TestCandidate(2));
+    }
+}
