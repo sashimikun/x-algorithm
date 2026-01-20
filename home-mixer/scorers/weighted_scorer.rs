@@ -83,8 +83,6 @@ impl WeightedScorer {
     fn offset_score(combined_score: f64) -> f64 {
         if p::WEIGHTS_SUM == 0.0 {
             combined_score.max(0.0)
-        } else if combined_score < 0.0 {
-            (combined_score + p::NEGATIVE_WEIGHTS_SUM) / p::WEIGHTS_SUM * p::NEGATIVE_SCORES_OFFSET
         } else {
             combined_score + p::NEGATIVE_SCORES_OFFSET
         }

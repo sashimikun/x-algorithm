@@ -55,7 +55,13 @@ impl Scorer<ScoredPostsQuery, PostCandidate> for AuthorDiversityScorer {
             *entry += 1;
 
             let multiplier = self.multiplier(position);
-            let adjusted_score = candidate.weighted_score.map(|score| score * multiplier);
+            let adjusted_score = candidate.weighted_score.map(|score| {
+                if score > 0.0 {
+                    score * multiplier
+                } else {
+                    score
+                }
+            });
 
             let updated = PostCandidate {
                 score: adjusted_score,
