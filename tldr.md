@@ -13,6 +13,15 @@ It's a **hybrid** system:
 -   **Weighted Scoring.** The final score is just a linear combination of those predicted probabilities (e.g., `10 * P(Like) + 20 * P(Repost) - 50 * P(Report)`).
 -   **Fail-Open.** The pipeline is designed to keep serving a feed even if individual filters or components crash.
 
+## How to Hack the Algo (Legally)
+Based on `WeightedScorer.rs`, here is what boosts your score:
+*   **The Big 3:** Likes, Reposts, and Replies are the core positive signals.
+*   **Dwell Time:** `DWELL_WEIGHT` and `CONT_DWELL_TIME_WEIGHT` are real. If people stop scrolling to read your thread, you win.
+*   **Visuals:** `PHOTO_EXPAND_WEIGHT` and `VQV_WEIGHT` (Video Quality View) exist.
+    *   *Tip:* Videos must exceed a minimum duration to qualify for the boost.
+*   **Shares:** Sharing via DM or Copy Link are tracked explicitly.
+*   **Don't Spam:** The `AuthorDiversityScorer` applies a decay factor to multiple posts from the same author in a single feed session.
+
 ## Architecture Breakdown
 
 ### 1. Home Mixer (Rust)
