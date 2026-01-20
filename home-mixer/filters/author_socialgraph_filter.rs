@@ -1,5 +1,6 @@
 use crate::candidate_pipeline::candidate::PostCandidate;
 use crate::candidate_pipeline::query::ScoredPostsQuery;
+use std::collections::HashSet;
 use tonic::async_trait;
 use xai_candidate_pipeline::filter::{Filter, FilterResult};
 
@@ -13,15 +14,19 @@ impl Filter<ScoredPostsQuery, PostCandidate> for AuthorSocialgraphFilter {
         query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
     ) -> Result<FilterResult<PostCandidate>, String> {
-        let viewer_blocked_user_ids = query.user_features.blocked_user_ids.clone();
-        let viewer_muted_user_ids = query.user_features.muted_user_ids.clone();
-
-        if viewer_blocked_user_ids.is_empty() && viewer_muted_user_ids.is_empty() {
+        if query.user_features.blocked_user_ids.is_empty()
+            && query.user_features.muted_user_ids.is_empty()
+        {
             return Ok(FilterResult {
                 kept: candidates,
                 removed: Vec::new(),
             });
         }
+
+        let viewer_blocked_user_ids: HashSet<i64> =
+            query.user_features.blocked_user_ids.iter().cloned().collect();
+        let viewer_muted_user_ids: HashSet<i64> =
+            query.user_features.muted_user_ids.iter().cloned().collect();
 
         let mut kept: Vec<PostCandidate> = Vec::new();
         let mut removed: Vec<PostCandidate> = Vec::new();
