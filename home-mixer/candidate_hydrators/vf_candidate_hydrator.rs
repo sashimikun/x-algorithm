@@ -84,12 +84,10 @@ impl Hydrator<ScoredPostsQuery, PostCandidate> for VFCandidateHydrator {
 
         let mut hydrated_candidates = Vec::with_capacity(candidates.len());
         for candidate in candidates {
-            let visibility_reason = result.get(&candidate.tweet_id);
-            let visibility_reason = visibility_reason.unwrap_or(&None);
-            let hydrated = PostCandidate {
-                visibility_reason: visibility_reason.clone(),
-                ..Default::default()
-            };
+            let mut hydrated = PostCandidate::default();
+            if let Some(Some(reason)) = result.get(&candidate.tweet_id) {
+                hydrated.visibility_reason = Some(reason.clone());
+            }
             hydrated_candidates.push(hydrated);
         }
         Ok(hydrated_candidates)
