@@ -75,7 +75,7 @@ impl UserActionSeqQueryHydrator {
         uas_thrift: ThriftUserActionSequence,
     ) -> Result<UserActionSequence, String> {
         // Extract user_actions from thrift sequence
-        let thrift_user_actions = uas_thrift.user_actions.clone().unwrap_or_default();
+        let thrift_user_actions = uas_thrift.user_actions.unwrap_or_default();
         if thrift_user_actions.is_empty() {
             return Err(format!("No user actions found for user {}", user_id));
         }
@@ -106,7 +106,7 @@ impl UserActionSeqQueryHydrator {
         }
 
         // Convert to proto format
-        let original_metadata = uas_thrift.metadata.clone().unwrap_or_default();
+        let original_metadata = uas_thrift.metadata.unwrap_or_default();
         convert_to_proto_sequence(
             user_id,
             original_metadata,
