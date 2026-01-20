@@ -24,11 +24,12 @@ pub async fn start_kafka(
     user: &str,
     tx: tokio::sync::mpsc::Sender<i64>,
 ) -> Result<()> {
-    let sasl_password = std::env::var("")
+    let sasl_password = std::env::var("KAFKA_SASL_PASSWORD")
         .ok()
-        .or(args.sasl_password.clone())?;
+        .or(args.sasl_password.clone())
+        .context("SASL password must be provided via env var KAFKA_SASL_PASSWORD or args")?;
 
-    let producer_sasl_password = std::env::var("")
+    let producer_sasl_password = std::env::var("KAFKA_PRODUCER_SASL_PASSWORD")
         .ok()
         .or(args.producer_sasl_password.clone());
 
