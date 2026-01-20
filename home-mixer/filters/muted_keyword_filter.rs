@@ -26,18 +26,16 @@ impl Filter<ScoredPostsQuery, PostCandidate> for MutedKeywordFilter {
         query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
     ) -> Result<FilterResult<PostCandidate>, String> {
-        if query.user_features.muted_keywords.is_empty() {
+        let muted_keywords = query.user_features.muted_keywords.clone();
+
+        if muted_keywords.is_empty() {
             return Ok(FilterResult {
                 kept: candidates,
                 removed: vec![],
             });
         }
 
-        let tokenized = query
-            .user_features
-            .muted_keywords
-            .iter()
-            .map(|k| self.tokenizer.tokenize(k));
+        let tokenized = muted_keywords.iter().map(|k| self.tokenizer.tokenize(k));
         let token_sequences: Vec<TokenSequence> = tokenized.collect::<Vec<_>>();
         let user_mutes = UserMutes::new(token_sequences);
         let matcher = MatchTweetGroup::new(user_mutes);
