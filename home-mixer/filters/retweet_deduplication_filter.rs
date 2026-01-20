@@ -1,81 +1,42 @@
 use crate::candidate_pipeline::candidate::PostCandidate;
 use crate::candidate_pipeline::query::ScoredPostsQuery;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use tonic::async_trait;
 use xai_candidate_pipeline::filter::{Filter, FilterResult};
 
-/// Deduplicates retweets, keeping only the best version of a tweet
-/// (e.g., preferring a valid Retweet over an Original).
+/// Deduplicates retweets, keeping only the first occurrence of a tweet
+/// (whether as an original or as a retweet).
 pub struct RetweetDeduplicationFilter;
 
 #[async_trait]
 impl Filter<ScoredPostsQuery, PostCandidate> for RetweetDeduplicationFilter {
     async fn filter(
         &self,
-        query: &ScoredPostsQuery,
+        _query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
     ) -> Result<FilterResult<PostCandidate>, String> {
-        // Build sets for fast lookup of muted/blocked users
-        let blocked_ids: HashSet<i64> = query
-            .user_features
-            .blocked_user_ids
-            .iter()
-            .cloned()
-            .collect();
-        let muted_ids: HashSet<i64> = query
-            .user_features
-            .muted_user_ids
-            .iter()
-            .cloned()
-            .collect();
-
-        let is_valid_author = |author_id: u64| -> bool {
-            let id = author_id as i64;
-            !blocked_ids.contains(&id) && !muted_ids.contains(&id)
-        };
-
-        // Rank function:
-        // 0: Invalid (Muted/Blocked)
-        // 1: Original
-        // 2: Retweet (Valid)
-        let get_rank = |c: &PostCandidate| -> u8 {
-            if !is_valid_author(c.author_id) {
-                0
-            } else if c.retweeted_tweet_id.is_some() {
-                2
-            } else {
-                1
-            }
-        };
-
-        // Map: Canonical Tweet ID -> Index in `kept` vector
-        let mut best_candidates: HashMap<u64, usize> = HashMap::new();
-        let mut kept: Vec<PostCandidate> = Vec::new();
-        let mut removed: Vec<PostCandidate> = Vec::new();
+        let mut seen_tweet_ids: HashSet<u64> = HashSet::new();
+        let mut kept = Vec::new();
+        let mut removed = Vec::new();
 
         for candidate in candidates {
-            let canonical_id = candidate
-                .retweeted_tweet_id
-                .unwrap_or(candidate.tweet_id as u64);
-
-            let current_rank = get_rank(&candidate);
-
-            if let Some(&existing_idx) = best_candidates.get(&canonical_id) {
-                let existing_rank = get_rank(&kept[existing_idx]);
-
-                if current_rank > existing_rank {
-                    // Current is better: Swap
-                    // Move the previously kept candidate to removed
-                    let previous = std::mem::replace(&mut kept[existing_idx], candidate);
-                    removed.push(previous);
-                } else {
-                    // Existing is better or equal: Drop current
-                    removed.push(candidate);
+            match candidate.retweeted_tweet_id {
+                Some(retweeted_id) => {
+                    // Remove if we've already seen this tweet (as original or retweet)
+                    if seen_tweet_ids.insert(retweeted_id) {
+                        kept.push(candidate);
+                    } else {
+                        removed.push(candidate);
+                    }
                 }
-            } else {
-                // New canonical ID
-                best_candidates.insert(canonical_id, kept.len());
-                kept.push(candidate);
+                None => {
+                    // Mark this original tweet ID as seen so retweets of it get filtered
+                    if seen_tweet_ids.insert(candidate.tweet_id as u64) {
+                        kept.push(candidate);
+                    } else {
+                        removed.push(candidate);
+                    }
+                }
             }
         }
 
@@ -88,71 +49,64 @@ mod tests {
     use super::*;
     use crate::candidate_pipeline::candidate::PostCandidate;
     use crate::candidate_pipeline::query::ScoredPostsQuery;
-    use crate::candidate_pipeline::query_features::UserFeatures;
 
     #[tokio::test]
-    async fn test_prefers_retweet_over_original() {
+    async fn test_retweet_deduplication_filter_removes_original_if_retweet_seen_first() {
         let filter = RetweetDeduplicationFilter;
         let query = ScoredPostsQuery::default();
 
-        let original = PostCandidate {
-            tweet_id: 200,
-            retweeted_tweet_id: None,
-            author_id: 1,
-            ..Default::default()
-        };
-
-        let retweet = PostCandidate {
+        let retweet_candidate = PostCandidate {
             tweet_id: 100,
             retweeted_tweet_id: Some(200),
-            author_id: 2,
             ..Default::default()
         };
 
-        // Case 1: Original then Retweet
-        let candidates = vec![original.clone(), retweet.clone()];
-        let result = filter.filter(&query, candidates).await.unwrap();
-        assert_eq!(result.kept.len(), 1);
-        assert_eq!(result.kept[0].tweet_id, 100); // Kept Retweet (swapped)
+        let original_candidate = PostCandidate {
+            tweet_id: 200,
+            retweeted_tweet_id: None,
+            ..Default::default()
+        };
 
-        // Case 2: Retweet then Original
-        let candidates = vec![retweet.clone(), original.clone()];
+        let candidates = vec![retweet_candidate, original_candidate];
+
         let result = filter.filter(&query, candidates).await.unwrap();
+
+        // Should keep the retweet (first occurrence of 200)
         assert_eq!(result.kept.len(), 1);
-        assert_eq!(result.kept[0].tweet_id, 100); // Kept Retweet (original dropped)
+        assert_eq!(result.kept[0].tweet_id, 100);
+
+        // Should remove the original tweet (second occurrence of 200)
+        assert_eq!(result.removed.len(), 1);
+        assert_eq!(result.removed[0].tweet_id, 200);
     }
 
     #[tokio::test]
-    async fn test_prefers_original_over_muted_retweet() {
+    async fn test_retweet_deduplication_filter_removes_retweet_if_original_seen_first() {
         let filter = RetweetDeduplicationFilter;
-        let mut query = ScoredPostsQuery::default();
-        // Mute User 2 (Retweeter)
-        query.user_features.muted_user_ids = vec![2];
+        let query = ScoredPostsQuery::default();
 
-        let original = PostCandidate {
+        let original_candidate = PostCandidate {
             tweet_id: 200,
             retweeted_tweet_id: None,
-            author_id: 1, // Valid
             ..Default::default()
         };
 
-        let muted_retweet = PostCandidate {
+        let retweet_candidate = PostCandidate {
             tweet_id: 100,
             retweeted_tweet_id: Some(200),
-            author_id: 2, // Muted
             ..Default::default()
         };
 
-        // Case 1: Original then Muted Retweet
-        let candidates = vec![original.clone(), muted_retweet.clone()];
-        let result = filter.filter(&query, candidates).await.unwrap();
-        assert_eq!(result.kept.len(), 1);
-        assert_eq!(result.kept[0].tweet_id, 200); // Kept Original (Rank 1 > Rank 0)
+        let candidates = vec![original_candidate, retweet_candidate];
 
-        // Case 2: Muted Retweet then Original
-        let candidates = vec![muted_retweet.clone(), original.clone()];
         let result = filter.filter(&query, candidates).await.unwrap();
+
+        // Should keep the original tweet (first occurrence of 200)
         assert_eq!(result.kept.len(), 1);
-        assert_eq!(result.kept[0].tweet_id, 200); // Kept Original (Swapped Rank 0 with Rank 1)
+        assert_eq!(result.kept[0].tweet_id, 200);
+
+        // Should remove the retweet (second occurrence of 200)
+        assert_eq!(result.removed.len(), 1);
+        assert_eq!(result.removed[0].tweet_id, 100);
     }
 }
