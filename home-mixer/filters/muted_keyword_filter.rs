@@ -26,7 +26,7 @@ impl Filter<ScoredPostsQuery, PostCandidate> for MutedKeywordFilter {
         query: &ScoredPostsQuery,
         candidates: Vec<PostCandidate>,
     ) -> Result<FilterResult<PostCandidate>, String> {
-        let muted_keywords = query.user_features.muted_keywords.clone();
+        let muted_keywords = &query.user_features.muted_keywords;
 
         if muted_keywords.is_empty() {
             return Ok(FilterResult {
