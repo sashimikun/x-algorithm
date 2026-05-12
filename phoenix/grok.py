@@ -29,10 +29,10 @@ class TrainingState(NamedTuple):
     params: hk.Params
 
 
-def ffn_size(emb_size, widening_factor):
+def ffn_size(emb_size, widening_factor, multiple_of=256):
     _ffn_size = int(widening_factor * emb_size) * 2 // 3
-    _ffn_size = _ffn_size + (8 - _ffn_size) % 8  # ensure it's a multiple of 8
-    logger.debug(f"emd_size: {emb_size} adjusted ffn_size: {_ffn_size}")
+    _ffn_size = multiple_of * ((_ffn_size + multiple_of - 1) // multiple_of)
+    logger.debug(f"emb_size: {emb_size} adjusted ffn_size: {_ffn_size}")
     return _ffn_size
 
 
